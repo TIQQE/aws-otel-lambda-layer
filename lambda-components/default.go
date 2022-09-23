@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 	"go.uber.org/multierr"
 
+	"github.com/TIQQE/aws-otel-lambda-layer/exporter/otlpexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awsxrayexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
@@ -49,6 +50,7 @@ func Components() (component.Factories, error) {
 	}
 
 	exporters, err := component.MakeExporterFactoryMap(
+		otlpexporter.NewFactory(),
 		loggingexporter.NewFactory(),
 		awsxrayexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
