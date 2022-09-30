@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/TIQQE/aws-otel-lambda-layer/pkg/utility"
 	"github.com/pkg/errors"
 	"golang.org/x/net/http2"
 )
@@ -69,7 +70,10 @@ func GetHttpClient() (*http.Client, error) {
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create custom client")
+		err = errors.Wrap(err, "failed to create custom client")
+		utility.LogError(err, "NewHTTPClientError", "Failed to create http client")
+
+		return nil, err
 	}
 
 	HTTPClient = c

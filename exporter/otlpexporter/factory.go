@@ -3,6 +3,7 @@ package otlpexporter
 import (
 	"context"
 
+	"github.com/TIQQE/aws-otel-lambda-layer/pkg/utility"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/config/configcompression"
@@ -47,11 +48,13 @@ func createDefaultConfig() config.Exporter {
 func createTracesExporter(ctx context.Context, set component.ExporterCreateSettings, cfg config.Exporter) (component.TracesExporter, error) {
 	oce, err := newExporter(cfg, set)
 	if err != nil {
+		utility.LogError(err, "TracesExporterError", "Failed to create new traces exporter")
 		return nil, err
 	}
+
 	oCfg := cfg.(*otlpexporter.Config)
 
-	return exporterhelper.NewTracesExporterWithContext(ctx, set, cfg, oce.pushTraces,
+	return exporterhelper.NewTracesExporter(ctx, set, cfg, oce.pushTraces,
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 		exporterhelper.WithTimeout(oCfg.TimeoutSettings),
 		exporterhelper.WithRetry(oCfg.RetrySettings),
@@ -63,11 +66,13 @@ func createTracesExporter(ctx context.Context, set component.ExporterCreateSetti
 func createMetricsExporter(ctx context.Context, set component.ExporterCreateSettings, cfg config.Exporter) (component.MetricsExporter, error) {
 	oce, err := newExporter(cfg, set)
 	if err != nil {
+		utility.LogError(err, "MetricsExporterError", "Failed to create new metrics exporter")
 		return nil, err
 	}
+
 	oCfg := cfg.(*otlpexporter.Config)
 
-	return exporterhelper.NewMetricsExporterWithContext(ctx, set, cfg,
+	return exporterhelper.NewMetricsExporter(ctx, set, cfg,
 		oce.pushMetrics,
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 		exporterhelper.WithTimeout(oCfg.TimeoutSettings),
@@ -81,11 +86,13 @@ func createMetricsExporter(ctx context.Context, set component.ExporterCreateSett
 func createLogsExporter(ctx context.Context, set component.ExporterCreateSettings, cfg config.Exporter) (component.LogsExporter, error) {
 	oce, err := newExporter(cfg, set)
 	if err != nil {
+		utility.LogError(err, "LogsExporterError", "Failed to create new logs exporter")
 		return nil, err
 	}
+
 	oCfg := cfg.(*otlpexporter.Config)
 
-	return exporterhelper.NewLogsExporterWithContext(ctx, set, cfg,
+	return exporterhelper.NewLogsExporter(ctx, set, cfg,
 		oce.pushLogs,
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 		exporterhelper.WithTimeout(oCfg.TimeoutSettings),

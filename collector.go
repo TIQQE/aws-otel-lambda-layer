@@ -18,9 +18,9 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 
+	"github.com/TIQQE/aws-otel-lambda-layer/pkg/utility"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/converter/expandconverter"
@@ -51,7 +51,8 @@ type Collector struct {
 func DisplayConfig(file string) string {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Panicf("failed reading data from file: %s", err)
+		utility.LogError(err, "DisplayConfigError", "Failed reading data", utility.KeyValue{K: "Filename", V: file})
+		return ""
 	}
 
 	return string(data)
@@ -62,8 +63,6 @@ func getConfig() string {
 	if !ex {
 		return "/opt/collector-config/config.yaml"
 	}
-
-	log.Printf("Using config file at path %v", val)
 
 	// 👉 Prints your collector configuration
 	// log.Print(DisplayConfig(val))
@@ -89,7 +88,8 @@ func NewCollector(factories component.Factories) *Collector {
 
 	cfgProvider, err := service.NewConfigProvider(cfgSet)
 	if err != nil {
-		log.Panicf("error on creating config provider: %v\n", err)
+		utility.LogError(err, "ConfigProviderError", "Failed on creating config provider", utility.KeyValue{K: "ConfigProviderSettings", V: cfgSet})
+		return nil
 	}
 
 	col := &Collector{
@@ -101,21 +101,21 @@ func NewCollector(factories component.Factories) *Collector {
 }
 
 func (c *Collector) Start(ctx context.Context) error {
-	log.Printf("Starting the Collector.... CTX: %v", ctx)
-
 	params := service.CollectorSettings{
 		BuildInfo: component.BuildInfo{
 			Command:     "otelcol",
 			Description: "Lambda Collector",
 			Version:     Version,
 		},
-		ConfigProvider: c.configProvider,
-		Factories:      c.factories,
+		ConfigProvider:        c.configProvider,
+		Factories:             c.factories,
+		SkipSettingGRPCLogger: true,
 	}
 
 	var err error
 	c.svc, err = service.New(params)
 	if err != nil {
+		utility.LogError(err, "NewCollectorError", "Unable to create and start a new collector", utility.KeyValue{K: "CollectorSettings", V: params})
 		return err
 	}
 
@@ -150,8 +150,6 @@ func (c *Collector) Start(ctx context.Context) error {
 }
 
 func (c *Collector) Stop() error {
-	log.Print("Stopping Collector....")
-
 	if !c.stopped {
 		c.stopped = true
 		c.svc.Shutdown()

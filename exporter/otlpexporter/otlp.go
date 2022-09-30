@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"runtime"
 	"time"
 
+	"github.com/TIQQE/aws-otel-lambda-layer/pkg/utility"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/consumer/consumererror"
@@ -50,11 +50,13 @@ func newExporter(cfg config.Exporter, set component.ExporterCreateSettings) (*ex
 	oCfg := cfg.(*otlpexporter.Config)
 
 	if oCfg.Endpoint == "" {
-		return nil, errors.New("OTLP exporter config requires an Endpoint")
+		err := errors.New("OTLP exporter config requires an Endpoint")
+		utility.LogError(err, "NewExporterError", "Endpoint not initialized")
+
+		return nil, err
 	}
 
-	userAgent := fmt.Sprintf("%s/%s (%s/%s)",
-		set.BuildInfo.Description, set.BuildInfo.Version, runtime.GOOS, runtime.GOARCH)
+	userAgent := fmt.Sprintf("%s/%s (%s/%s)", set.BuildInfo.Description, set.BuildInfo.Version, runtime.GOOS, runtime.GOARCH)
 
 	return &exporter{config: oCfg, settings: set.TelemetrySettings, userAgent: userAgent}, nil
 }
@@ -62,15 +64,16 @@ func newExporter(cfg config.Exporter, set component.ExporterCreateSettings) (*ex
 // start actually creates the gRPC connection. The client construction is deferred till this point as this
 // is the only place we get hold of Extensions which are required to construct auth round tripper.
 func (e *exporter) start(ctx context.Context, host component.Host) (err error) {
-	log.Printf("Sarting to create a gRPC connection")
-
 	dialOpts, err := e.config.GRPCClientSettings.ToDialOptions(host, e.settings)
 	if err != nil {
+		utility.LogError(err, "gRPCError", "Failed to map client settings")
 		return err
 	}
-	dialOpts = append(dialOpts, grpc.WithUserAgent(e.userAgent))
 
-	if e.clientConn, err = grpc.DialContext(ctx, e.config.GRPCClientSettings.SanitizedEndpoint(), dialOpts...); err != nil {
+	dialOpts = append(dialOpts, grpc.WithUserAgent(e.userAgent))
+	e.clientConn, err = grpc.DialContext(ctx, e.config.GRPCClientSettings.SanitizedEndpoint(), dialOpts...)
+	if err != nil {
+		utility.LogError(err, "gRPCError", "Failed to create connection")
 		return err
 	}
 
@@ -131,11 +134,12 @@ func processError(err error) error {
 		return nil
 	}
 
-	// Now, this is this a real error.
+	// Now, this is a real error.
 	retryInfo := getRetryInfo(st)
 
 	if !shouldRetry(st.Code(), retryInfo) {
 		// It is not a retryable error, we should not retry.
+		utility.LogError(err, "RetryError", "Permanent error")
 		return consumererror.NewPermanent(err)
 	}
 
@@ -143,11 +147,11 @@ func processError(err error) error {
 	throttleDuration := getThrottleDuration(retryInfo)
 	if throttleDuration != 0 {
 		// We are throttled. Wait before retrying as requested by the server.
+		utility.LogError(err, "ThrottleRetryError", "Throttle retry error")
 		return exporterhelper.NewThrottleRetry(err, throttleDuration)
 	}
 
 	// Need to retry.
-
 	return err
 }
 
@@ -173,12 +177,8 @@ func shouldRetry(code codes.Code, retryInfo *errdetails.RetryInfo) bool {
 }
 
 func getRetryInfo(status *status.Status) *errdetails.RetryInfo {
-	log.Printf("getRetryInfo status: %v", status.Details())
-
 	for _, detail := range status.Details() {
 		if t, ok := detail.(*errdetails.RetryInfo); ok {
-			log.Printf("getRetryInfo details: %v", t)
-
 			return t
 		}
 	}
