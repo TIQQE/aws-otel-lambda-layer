@@ -107,9 +107,8 @@ func (c *Collector) Start(ctx context.Context) error {
 			Description: "Lambda Collector",
 			Version:     Version,
 		},
-		ConfigProvider:        c.configProvider,
-		Factories:             c.factories,
-		SkipSettingGRPCLogger: true,
+		ConfigProvider: c.configProvider,
+		Factories:      c.factories,
 	}
 
 	var err error
