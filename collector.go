@@ -65,7 +65,7 @@ func getConfig() string {
 	}
 
 	// 👉 Prints your collector configuration
-	// log.Print(DisplayConfig(val))
+	// logger.InfoString(DisplayConfig(val))
 
 	return val
 }
@@ -109,12 +109,12 @@ func (c *Collector) Start(ctx context.Context) error {
 		},
 		ConfigProvider: c.configProvider,
 		Factories:      c.factories,
+		LoggingOptions: utility.NopCoreLogger(),
 	}
 
 	var err error
 	c.svc, err = service.New(params)
 	if err != nil {
-		utility.LogError(err, "NewCollectorError", "Unable to create and start a new collector", utility.KeyValue{K: "CollectorSettings", V: params})
 		return err
 	}
 
