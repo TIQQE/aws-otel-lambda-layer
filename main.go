@@ -32,7 +32,12 @@ var (
 )
 
 func main() {
-	factories, _ := lambdacomponents.Components()
+	factories, err := lambdacomponents.Components()
+	if err != nil {
+		utility.LogError(err, "LambdaComponentsError", "Failed to make factories")
+		return
+	}
+
 	collector := NewCollector(factories)
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -48,7 +53,7 @@ func main() {
 		cancel()
 	}()
 
-	_, err := extensionClient.Register(ctx, extensionName)
+	_, err = extensionClient.Register(ctx, extensionName)
 	if err != nil {
 		utility.LogError(err, "RegisterExtensionError", "Failed to register extension")
 		return
